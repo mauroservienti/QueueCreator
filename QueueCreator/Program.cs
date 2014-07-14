@@ -21,46 +21,59 @@ namespace QueueCreator
 			if ( !MessageQueue.Exists( qn ) )
 			{
 				var q = MessageQueue.Create( qn, true );
-				SetPermissions( q, prms.AddCurrentWindowsUser, prms.CustomUsers );
+				SetPermissions( q, prms );
 
 				if ( prms.CreateSubscriptionsQueue )
 				{
 					var s = MessageQueue.Create( qn + ".subscriptions", true );
-					SetPermissions( s, prms.AddCurrentWindowsUser, prms.CustomUsers );
+					SetPermissions( s, prms );
 				}
 
 				if ( prms.CreateTimeoutsQueue )
 				{
 					var t = MessageQueue.Create( qn + ".timeouts", true );
-					SetPermissions( t, prms.AddCurrentWindowsUser, prms.CustomUsers );
+					SetPermissions( t, prms );
 				}
 
 				if ( prms.CreateRetriesQueue )
 				{
 					var r = MessageQueue.Create( qn + ".retries", true );
-					SetPermissions( r, prms.AddCurrentWindowsUser, prms.CustomUsers );
+					SetPermissions( r, prms );
 				}
 			}
 		}
 
-		static void SetPermissions( MessageQueue q, Boolean addCurrentWindowsUser, String customUsers )
+		static string GetLocalizedName(WellKnownSidType sidType) 
 		{
-			q.SetPermissions( "SYSTEM", MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
-			q.SetPermissions( "Administrators", MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
-			q.SetPermissions( WindowsIdentity.GetAnonymous().Name, MessageQueueAccessRights.WriteMessage, AccessControlEntryType.Allow );
-			q.SetPermissions( "Everyone", MessageQueueAccessRights.WriteMessage, AccessControlEntryType.Allow );
-			q.SetPermissions( "Everyone", MessageQueueAccessRights.GetQueueProperties, AccessControlEntryType.Allow );
+			var sid = new SecurityIdentifier( WellKnownSidType.WorldSid, null );
+			var reference = sid.Translate( typeof( System.Security.Principal.NTAccount ) );
+			var name = reference.ToString();
 
-			if ( addCurrentWindowsUser )
+			return name;
+		}
+
+		static void SetPermissions( MessageQueue q, Parameters prms )
+		{
+			var administrators = GetLocalizedName( WellKnownSidType.BuiltinAdministratorsSid );
+			var everyone = GetLocalizedName( WellKnownSidType.WorldSid );
+			var anonymous = WindowsIdentity.GetAnonymous().Name;
+
+			q.SetPermissions( "SYSTEM", MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
+			q.SetPermissions( administrators, MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
+			q.SetPermissions( anonymous, MessageQueueAccessRights.WriteMessage, AccessControlEntryType.Allow );
+			q.SetPermissions( everyone, MessageQueueAccessRights.WriteMessage, AccessControlEntryType.Allow );
+			q.SetPermissions( everyone, MessageQueueAccessRights.GetQueueProperties, AccessControlEntryType.Allow );
+
+			if ( prms.AddCurrentWindowsUser )
 			{
 				var identity = WindowsIdentity.GetCurrent();
 				var name = identity.Name;
 				q.SetPermissions( name, MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
 			}
 
-			if ( !String.IsNullOrWhiteSpace( customUsers ) ) 
+			if ( !String.IsNullOrWhiteSpace( prms.CustomUsers ) ) 
 			{
-				var users = customUsers.Split( new[] { ',' }, StringSplitOptions.RemoveEmptyEntries )
+				var users = prms.CustomUsers.Split( new[] { ',' }, StringSplitOptions.RemoveEmptyEntries )
 					.Select( u => u.Trim() );
 
 				foreach ( var user in users ) 
