@@ -31,8 +31,19 @@ namespace QueueCreator
 
 				if ( prms.CreateTimeoutsQueue )
 				{
-					var t = MessageQueue.Create( qn + ".timeouts", true );
-					SetPermissions( t, prms );
+                    //v3.x
+                    var name = ".timeouts";
+
+                    var t = MessageQueue.Create( qn + name, true );
+                    SetPermissions( t, prms );
+
+                    if ( prms.CompatibilityLevel.StartsWith( "v4", StringComparison.OrdinalIgnoreCase ) ) 
+                    {
+                        name = ".TimeoutsDispatcher";
+
+                        var td = MessageQueue.Create( qn + name, true );
+                        SetPermissions( td, prms );
+                    }
 				}
 
 				if ( prms.CreateRetriesQueue )
@@ -40,6 +51,18 @@ namespace QueueCreator
 					var r = MessageQueue.Create( qn + ".retries", true );
 					SetPermissions( r, prms );
 				}
+
+                if ( prms.CreateErrorQueue )
+                {
+                    var r = MessageQueue.Create( qn + "error", true );
+                    SetPermissions( r, prms );
+                }
+
+                if ( prms.CreateAuditQueue )
+                {
+                    var r = MessageQueue.Create( qn + "audit", true );
+                    SetPermissions( r, prms );
+                }
 			}
 		}
 
@@ -56,7 +79,7 @@ namespace QueueCreator
 		{
 			var administrators = GetLocalizedName( WellKnownSidType.BuiltinAdministratorsSid );
 			var everyone = GetLocalizedName( WellKnownSidType.WorldSid );
-			var anonymous = WindowsIdentity.GetAnonymous().Name;
+            var anonymous = GetLocalizedName( WellKnownSidType.AnonymousSid );
 
 			q.SetPermissions( "SYSTEM", MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
 			q.SetPermissions( administrators, MessageQueueAccessRights.FullControl, AccessControlEntryType.Allow );
@@ -91,6 +114,7 @@ namespace QueueCreator
 			this.CreateRetriesQueue = true;
 			this.CreateSubscriptionsQueue = true;
 			this.CreateTimeoutsQueue = true;
+            this.CompatibilityLevel = "v4";
 		}
 
 		[CommandLineArgument( "Name", Aliases = new[] { "n" } )]
@@ -110,5 +134,14 @@ namespace QueueCreator
 
 		[CommandLineArgument( "CustomUsers", IsRequired = false, Aliases = new[] { "users" } )]
 		public String CustomUsers { get; set; }
+
+        [CommandLineArgument( "CompatibilityLevel", IsRequired = false, Aliases = new[] { "cl" } )]
+        public String CompatibilityLevel { get; set; }
+
+        [CommandLineArgument( "CreateErrorQueue", IsRequired = false, Aliases = new[] { "error" } )]
+        public Boolean CreateErrorQueue { get; set; }
+
+        [CommandLineArgument( "CreateAudiQueue", IsRequired = false, Aliases = new[] { "audit" } )]
+        public Boolean CreateAuditQueue { get; set; }
 	}
 }
